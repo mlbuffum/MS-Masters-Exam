@@ -1,0 +1,231 @@
+---
+title: "Design of Experiment"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plyr)
+library(dplyr)
+library(reshape2)
+```
+
+
+# 3.1 An Example
+In many integrated manufacturing steps, wafers are completed coated with a layer of material such as silicon dioxide or a metal. The unwanted material is then selectively removed by etching through a mask, thereby creating circuit patterns, electrical interconnects, and areas in which diffusions are to be made. A plasma etching process is widely used for this operation, particularly in small geometry applications. Energy s supplied by a radio-frequency (RF) generator causing plasma to be generated in the gap between the elecctrodes. The chemical species in the plasma are determined b the particular gases used. Fluorocarbons, such as CF_4 or C_2F_6, are often used in plasma etching, but other gases and mixtures of gases are relatively common, depending on the application.
+  
+An engineer is interested in investifating the relationship between the RF power setting and the etch rate for this tool. The objective of an experiment like this is to model the relationship between etch rate and RF power, and to specify the power setting that will give a desired target etch rate. She is interested in a particular gas (C_2F_6) and gap (0.80 cm) and wants to test four levels of RF power: 160, 180, 200, and 220 W. She decided to test five wafers at each level of RF power.
+
+```{r, echo = F}
+
+dat0 <- as.data.frame(array(
+  c(
+    rep(c(160,180,200,220),5),
+    rep(1,4),rep(2,4),rep(3,4),rep(4,4),rep(5,4),
+    575,565,600,725,
+    542,593,651,700,
+    530,590,610,715,
+    539,579,637,685,
+    570,610,629,710
+  ),
+  dim = c(20,3)
+))
+
+colnames(dat0) <- c("Power","Replication","EtchRate")
+
+# Check Totals
+check_rowTotals <- summarize(
+  group_by(dat0,Power),
+  rowTot = sum(EtchRate),
+  rowAvg = mean(EtchRate)
+)
+
+# Make power a factor
+dat0$Power <- as.factor(dat0$Power)
+
+```
+  
+Examine the data graphically:
+```{r, echo = F}
+boxplot(EtchRate ~ Power, data = dat0)
+```
+  
+Suppose we wish to test for differences between the mean etch rate at all $\alpha = 4$ levels of RF power (and thus, the equality of all four means). We should NOT perform all six pairwise t-tests:
+  
+* Performing all six pairwise t-tests is inefficient
+* Inflates type 1 error: suppose that all four means are equal, so if we select $\alpha = 0.05$, the probability of reaching the correct decision on any single comparison is 0.95. However, the probability of reach the correct conclusion on all six comparisons is considerably less than 0.95, so Type I Error is inflated.
+  
+Need to use the **Analysis of Variance**.
+  
+# 3.2 The Analysis of Variance
+Suppose we have *a* treatments, or different levels, of a single factor that we wish to compare. A response $y_{ij}$ represents the $j^{th}$ observation taken under that factor level or treatment $i$. There will be *n* observations under the $i^{th}$ treatment.
+  
+### Models for the Data
+\[
+y_{ij} = \mu_i + \epsilon_{ij}
+\]
+  
+where
+  
+\[
+\begin{aligned}
+i &= 1,2,...,a\\
+j &= 1,2,...,n
+\end{aligned}
+\]
+  
+The **means model** is an alternative way to write a model for the data:
+\[
+y_{ij} = \mu + \tau_i
+\]
+  
+so that the **effects model** is
+\[
+y_{ij} = \mu + \tau_i + \epsilon_{ij}
+\]
+  
+Therefore, we have
+  
+* $\mu$ is the **overall mean**
+* $\tau_i$ is the **ith treatment effect**
+  
+This is called the **one-way** or **single-factor ANOVA** model. Because runs were conducted in a random order, the experimental design is a **completely randomized design**. We assume that:
+\[
+y_{ij} \sim N(\mu + \tau_i,\sigma^2)
+\]
+  
+### Fixed or Random Factor
+The statistical model above describes two different situations with respect to the treatment effects:
+  
+1. **Fixed Effects Model.** The *a* treatmens could have been specifically chosen by the experimenter. In this case, we wish to test the hypotheses about the treatment means, and our conclusion will only apply to the factor levels considered in the analysis.
+2. **Random Effects Model.** The *a* treatments could a random sample from a larger population of treatments. In this case, we wish to extend the conclusion to all treatments in the population, regardless of their inclusion in the analysis. Here, the $\tau_i$ are random variables. We test hypotheses about the variability of the $\tau_i$ (**components of variance model**).
+  
+## Analysis of the Fixed Effects Model
+Recall that:  
+* $y_{i.}$ is the sum of the observations under the ith treatment
+* $\bar y_{i.}$ is the mean of the observations under the ith treatment
+* $y_{..}$ is the grand total of all observations
+* $\bar y_{..}$ is the grand mean of all observations
+  
+We are interested in testing the equality of the *a* treatment means; that is, $E(y_{ij})=\mu + \tau_i,\ i=1,2,...,a$. The appropriate hypotheses are:
+\[
+\begin{aligned}
+H_0 :& \mu_1 = \mu_2 = ... = \mu_a\\
+H_1 :& \mu_i \ne \mu_j\ \text{for at least one pair }(i,j)
+\end{aligned}
+\]
+  
+In the **effects model**, we break the ith treatment mean into two components such that $\mu_i = \mu + \tau_i$. We usually think of $\mu$ as the **overall mean** so that
+\[
+\frac{1}{a}\sum_{i=1}^a \mu_i
+\]
+  
+But this definition implies that
+\[
+\sum_{i=1}^a \tau_i = 0
+\]
+  
+That is, the treatment or factor effects can be thought of as **deviations from the overall mean**. Consequently, another way to write the hypotheses is
+\[
+\begin{aligned}
+H_0 :& \tau_1 = \tau_2 = ... = \tau_a\\
+H_1 :& \tau_i \ne 0\ \text{for at least one }i
+\end{aligned}
+\]
+  
+## 3.3.1 Decomposition of the Total Sum of Squares
+The name **analysis of variance** is derived from a partitioning on total variability into its compoment parts. The total corrected sum of squares
+\[
+SS_T = \sum_{i=1}^a \sum_{j=1}^n (y_{ij} - \bar y_{..})^2
+\]
+  
+is used as a measure of overall variability in the data. (**Sample variance** of the *y*'s is the total sum of squares divided by the DF - 1, or $an - 1$, the standard measure of variability.)
+  
+The total corrected sum of squares may be written as
+\[
+\begin{aligned}
+\sum_{i=1}^a \sum_{j=1}^n (y_{ij} - \bar y_{..})^2 &= \sum_{i=1}^a \sum_{j=1}^n [(\bar y_{i.} - \bar y_{..}) + (y_{ij} - \bar y_{i.})]^2\\
+&=n\sum_{i=1}^2 (\bar y_{i.} - \bar y_{..})^2 + \sum_{i=1}^a \sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\\
+&+ 2\sum_{i=1}^a \sum_{j=1}^n(\bar y_{i.} - \bar y_{..})(y_{ij} - \bar y_{i.})\\
+&=n\sum_{i=1}^2 (\bar y_{i.} - \bar y_{..})^2 + \sum_{i=1}^a \sum_{j=1}^n(y_{ij} - \bar y_{i.})^2
+\end{aligned}
+\]
+  
+because the cross-product term equals 0:
+\[
+\sum_{j=1}^n(y_{ij} - \bar y_{i.}) = \sum_{j=1}^ny_{ij} - \sum_{j=1}^n\bar y_{i.}=y_{i.} - n\bar y_{i.}=0.
+\]
+  
+This is a fundamental ANOVA identity, and states that the total variability in the data can be partitioned into:
+  
+* a sum of squares **between** levels of treatment (ith mean minus the grand mean), that is, difference in treatment means, and
+* a sum of squares **within** each level of treatment (jth observation minus the ith treatment mean), which we assume is due to random error unless otherwise controlled for.
+\[
+SS_T = SS_{Treatment} + SS_{Error}
+\]
+  
+There are:
+  
+* $N-1$ degrees of freedom total
+* $a-1$ degrees of freedom for treatment
+* $N-a = a(n-1)$ degrees of freedom for error (there are $n - 1$ degrees of freedom with which to measure error in each treatment group)
+  
+### Sum of Squares Within Treaments ($SS_{Error}$)
+Let's look at the error sum of squares within a treatment group, that is, within treatment group $i$:
+\[
+SS_{Error} = \sum_{i=1}^a\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2 = \sum_{i=1}^a\biggr[\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]
+\]
+  
+The component of the sum of squared errors inside the bracket, when divided by $n-1$, is the **sample variance** in the ith treatment, or
+\[
+S_i^2 = \frac{\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2}{n-1},\ i = 1,2,...,a
+\]
+  
+We have $a$ sample variances, since there are $a$ treatments. These can be combined across levels of treatments to give a single estimate of the common population variance, a **pooled estimate** of the common variance within each of the $a$ treatments:
+\[
+SS_{pooled} = \frac{\sum_{i=1}^a\biggr[\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]}{\sum_{i=1}^a(n-1)} = \frac{SS_{Error}}{N-a}
+\]
+  
+### Sum of Squares Between Treatments
+Now let's look at the other term in the total sum of squares, the sum of squares between treatments. Suppose there were no differences in between $a$ treatment means. We could use the variation in treatment group averages from the grand mean to estimate the variability in the population, $\sigma^2$:
+\[
+\frac{SS_{Treatments}}{a-1} = \frac{n\sum_{i=1}^n(\bar y_{i.} - \bar y_{..})^2}{a-1}
+\]
+  
+The ANOVA identity, $SS_{Total} = SS_{Treatments} + SS_{Error}$, provides us with **two estimates of $\mathbf{\sigma^2}$**: one based on the variability between treatments and one based on the variability within treatments. IF there is no difference in the treatment means, these two estimates should be very similar, and if they are not, **we suspect that the observed difference must be caused by differences in treatment means**.
+  
+The quantities
+\[
+\begin{aligned}
+MS_{Treatments} =& \frac{SS_{Treatments}}{a - 1}\ \text{, and}\\
+MS_{Error} =& \frac{SS_{Error}}{N - a}
+\end{aligned}
+\]
+  
+are called **mean squares**. We now examine the **expected values** of these mean squares. Consider
+\[
+\begin{aligned}
+E(MS_E) &= E\biggr(\frac{SS_E}{N-1}\biggl) = \frac{1}{N-1}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(y_{ij}^2 - 2y_{ij}\bar y_{i.} + \bar y_{i.}^2)\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij} - 2n\sum_{i=1}^a\bar y_{i.}^2 + n\sum_{i=1}^a\bar y_{i.}^2\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij}^2-\frac{1}{n}\sum_{i=1}^ay_{i.}^2\biggl]
+\end{aligned}
+\]
+  
+Now replace $y_{ij}$ with $\mu + \tau_i + \epsilon_{ij}$, and we obtain
+\[
+E(MS_E) = \frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(\mu + \tau_i + \epsilon_{ij})^2 - \frac{1}{n}\sum_{i=1}^a\biggr(\sum_{j=1}^n \mu + \tau_i + \epsilon_{ij}\biggl)^2\biggl]
+\]
+  
+
+
+
+
+
+
+
+
+
+
+
+
