@@ -76,7 +76,7 @@ j &= 1,2,...,n
   
 The **means model** is an alternative way to write a model for the data:
 \[
-y_{ij} = \mu + \tau_i
+\mu_{i} = \mu + \tau_i
 \]
   
 so that the **effects model** is
@@ -101,13 +101,17 @@ The statistical model above describes two different situations with respect to t
 2. **Random Effects Model.** The *a* treatments could a random sample from a larger population of treatments. In this case, we wish to extend the conclusion to all treatments in the population, regardless of their inclusion in the analysis. Here, the $\tau_i$ are random variables. We test hypotheses about the variability of the $\tau_i$ (**components of variance model**).
   
 ## Analysis of the Fixed Effects Model
-Recall that:  
+Recall that:
+  
 * $y_{i.}$ is the sum of the observations under the ith treatment
 * $\bar y_{i.}$ is the mean of the observations under the ith treatment
 * $y_{..}$ is the grand total of all observations
 * $\bar y_{..}$ is the grand mean of all observations
   
-We are interested in testing the equality of the *a* treatment means; that is, $E(y_{ij})=\mu + \tau_i,\ i=1,2,...,a$. The appropriate hypotheses are:
+We are interested in testing the equality of the *a* treatment means; that is,
+\[E(y_{ij})=\mu + \tau_i = \mu_i,\ i=1,2,...,a\]
+  
+The appropriate hypotheses are:
 \[
 \begin{aligned}
 H_0 :& \mu_1 = \mu_2 = ... = \mu_a\\
@@ -117,7 +121,7 @@ H_1 :& \mu_i \ne \mu_j\ \text{for at least one pair }(i,j)
   
 In the **effects model**, we break the ith treatment mean into two components such that $\mu_i = \mu + \tau_i$. We usually think of $\mu$ as the **overall mean** so that
 \[
-\frac{1}{a}\sum_{i=1}^a \mu_i
+\mu = \frac{1}{a}\sum_{i=1}^a \mu_i
 \]
   
 But this definition implies that
@@ -134,7 +138,7 @@ H_1 :& \tau_i \ne 0\ \text{for at least one }i
 \]
   
 ## 3.3.1 Decomposition of the Total Sum of Squares
-The name **analysis of variance** is derived from a partitioning on total variability into its compoment parts. The total corrected sum of squares
+The name **analysis of variance** is derived from a partitioning of total variability into its component parts. The total corrected sum of squares
 \[
 SS_T = \sum_{i=1}^a \sum_{j=1}^n (y_{ij} - \bar y_{..})^2
 \]
@@ -187,12 +191,14 @@ SS_{pooled} = \frac{\sum_{i=1}^a\biggr[\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\bigg
 \]
   
 ### Sum of Squares Between Treatments
-Now let's look at the other term in the total sum of squares, the sum of squares between treatments. Suppose there were no differences in between $a$ treatment means. We could use the variation in treatment group averages from the grand mean to estimate the variability in the population, $\sigma^2$:
+Now let's look at the other term in the total sum of squares, the sum of squares between treatments.
+  
+Suppose there were no differences in between $a$ treatment means. We could use the variation in treatment group averages from the grand mean to estimate the variability in the population, $\sigma^2$:
 \[
 \frac{SS_{Treatments}}{a-1} = \frac{n\sum_{i=1}^n(\bar y_{i.} - \bar y_{..})^2}{a-1}
 \]
   
-The ANOVA identity, $SS_{Total} = SS_{Treatments} + SS_{Error}$, provides us with **two estimates of $\mathbf{\sigma^2}$**: one based on the variability between treatments and one based on the variability within treatments. IF there is no difference in the treatment means, these two estimates should be very similar, and if they are not, **we suspect that the observed difference must be caused by differences in treatment means**.
+The ANOVA identity, $SS_{Total} = SS_{Treatments} + SS_{Error}$, provides us with **two estimates of $\mathbf{\sigma^2}$**: one based on the variability **between treatments** and one based on the variability **within treatments**. IF there is no difference in the treatment means, these two estimates should be very similar, and if they are not, **we suspect that the observed difference must be caused by differences in treatment means**.
   
 The quantities
 \[
@@ -205,10 +211,11 @@ MS_{Error} =& \frac{SS_{Error}}{N - a}
 are called **mean squares**. We now examine the **expected values** of these mean squares. Consider
 \[
 \begin{aligned}
-E(MS_E) &= E\biggr(\frac{SS_E}{N-1}\biggl) = \frac{1}{N-1}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]\\
+E(MS_E) &= E\biggr(\frac{SS_E}{N-a}\biggl) \\
+&= \frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]\\
 &=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(y_{ij}^2 - 2y_{ij}\bar y_{i.} + \bar y_{i.}^2)\biggl]\\
-&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij} - 2n\sum_{i=1}^a\bar y_{i.}^2 + n\sum_{i=1}^a\bar y_{i.}^2\biggl]\\
-&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij}^2-\frac{1}{n}\sum_{i=1}^ay_{i.}^2\biggl]
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij}^2 - 2n\sum_{i=1}^a\bar y_{i.}^2 + n\sum_{i=1}^a\bar y_{i.}^2\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^ny_{ij}^2-\frac{1}{n}\sum_{i=1}^a\sum_{j=1}^ny_{i.}^2\biggl]
 \end{aligned}
 \]
   
@@ -217,9 +224,159 @@ Now replace $y_{ij}$ with $\mu + \tau_i + \epsilon_{ij}$, and we obtain
 E(MS_E) = \frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(\mu + \tau_i + \epsilon_{ij})^2 - \frac{1}{n}\sum_{i=1}^a\biggr(\sum_{j=1}^n \mu + \tau_i + \epsilon_{ij}\biggl)^2\biggl]
 \]
   
+Look within the brackets: we see that when squaring and taking the expectation of terms involving $\epsilon_{ij}^2$ and $\epsilon_{i.}^2$ are replaced by $\sigma^2$ and $n\sigma^2$, respectively:
+\[
+\begin{aligned}
+E(MS_E) &= \frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(\mu + \tau_i + \epsilon_{ij})^2 - \frac{1}{n}\sum_{i=1}^a\biggr(\sum_{j=1}^n \mu + \tau_i + \epsilon_{ij}\biggl)^2\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n(\mu^2 + \tau_i^2 + \epsilon_{ij}^2 + 2\mu\tau_i + 2\mu\epsilon_{ij} + 2\tau_i\epsilon_{ij}) - \frac{1}{n}\sum_{i=1}^a\biggr(n\mu + n\tau_i + \epsilon_{i.}\biggl)^2\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a(n\mu^2 + n\tau_i^2 + \sum_{j=1}^n\epsilon_{ij}^2 + 2n\mu\tau_i + 2\mu\epsilon_{i.} + 2\tau_i\epsilon_{i.}) - \frac{1}{n}\sum_{i=1}^a\biggr((n\mu)^2 + (n\tau_i)^2 + \epsilon_{i.}^2 + 2n^2\mu\tau_i + 2n\mu\epsilon_{i.} + 2n\tau_i\epsilon_{ij}\biggl)\biggl]\\
+&=\frac{1}{N-a}E\biggr[(an\mu^2 + n\sum_{i=1}^a\tau_i^2 + \sum_{i=1}^a\sum_{j=1}^n\epsilon_{ij}^2 + 0 + 2\mu\epsilon_{..} + 0) - \biggr(an\mu^2 + n\sum_{i=1}^a\tau_i^2 + \frac{1}{n}\sum_{i=1}^a\epsilon_{i.}^2 + 0 + 2\mu\epsilon_{..} + 0\biggl)\biggl]\\
+&=\frac{1}{N-a}E\biggr[an\mu^2 + n\sum_{i=1}^a\tau_i^2 + \sum_{i=1}^a\sum_{j=1}^n\epsilon_{ij}^2 + 2\mu\epsilon_{..} - an\mu^2 - n\sum_{i=1}^a\tau_i^2 - \frac{1}{n}\sum_{i=1}^a\epsilon_{i.}^2 - 2\mu\epsilon_{..}\biggl]\\
+&=\frac{1}{N-a}E\biggr[\sum_{i=1}^a\sum_{j=1}^n\epsilon_{ij}^2 - \frac{1}{n}\sum_{i=1}^a\epsilon_{i.}^2 \biggl]\\
+&=\frac{1}{N-a}[\sum_{i=1}^a\sum_{j=1}^nE(\epsilon_{ij}^2) - \frac{1}{n}\sum_{i=1}^aE(\epsilon_{i.}^2)]\\
+&=\frac{1}{N-a}[anE(\epsilon_{ij}^2) - \frac{an}{n}E(\epsilon_{ij}^2)]\\
+&=\frac{1}{N-a}[an\sigma^2 - a\sigma^2]\\
+&=\sigma^2
+\end{aligned}
+\]
+  
+In conclusion, we have just shown that the expected value of the mean square of error is an unbiased estimator of the population variance, that is,
+\[
+E(MS_E) = \sigma^2
+\]
+  
+Similarly, the expected value of the mean square of treatment is
+\[
+E(MS_{treatment}) = \sigma^2 + \frac{n\sum_{i=1}^a\tau_i}{a-1}
+\]
+  
+Thus, $MS_E=SS_E/(N-a)$ estimates $\sigma^2$, and
+  
+* if there are **no differences in treatment means**, then $MS_{treatments} = SS_{treatments}/(a-1)$ also estimates $\sigma^2$ (because $\tau_i=0$)
+* if there **are differences in treatment means**, then the expected value of treatment means is greater than $\sigma^2$.
+  
+Therefore, the hypothesis test of no difference in treatment means has to compare $MS_{treatments}$ to $MS_E$.
+  
+## Statistical Analysis
+We can now explore a formal test for the null hypothesis of no difference in treatment means.
+  
+First, recall that we have assumed
+\[
+\epsilon_{ij} \sim iid\ N(0,\sigma^2)
+\]
+  
+which implies
+\[
+y_{ij} \sim iid\ N(\mu + \tau_i,\sigma^2)
+\]
+  
+Thus, $SS_T$ is a sum of squares in normally distributed random variables; consequently, it can be shown that $SS_T/\sigma^2$ is distributed as a **chi-square with N - 1 degrees of freedom**. Furthermore, we can show that
+\[
+\begin{aligned}
+SS_E/\sigma^2 &\sim \chi^2_{N-a}\\
+SS_{treatment}/\sigma^2 &\sim \chi^2_{a-1}
+\end{aligned}
+\]
+  
+if the null hypothesis $H_0: \tau_i = 0 \forall i$ is true.
+  
+However, the three sums of squares are not necessarility **independent** because $SS_{treatments} + SS_E = SS_T$. But we need to establish that $SS_E$ and $SS_{treatments}$ are independent; thus we have **Cochran's Theorem**:
+  
+Let $Z_i\sim NID(0,1)$ for $i=1,2,..,\nu$ and
+\[
+\sum_{i=1}^{\nu} Z_i^2 = Q_1 + Q_2 + ... + Q_s
+\]
+  
+where $s \le \nu$, and $Q_i$ has $\nu_i$ degrees of freedom ($i = 1,2,...,s$). Then $Q_1,Q_2,...,Q_S$ are independent chi-square random variables with $\nu_1,\nu_2,...,\nu_s$ degrees of freedom, **if and only if**
+\[
+\nu = \nu_1 + \nu_2 + ... + \nu_s
+\]
+  
+By Cochran's Theorem, because the degrees of freedom for $SS_E$ and $SS_{treatment}$ add to the total degrees of freedom ($N-1$), this implies that $SS_E/\sigma^2$ and $SS_{treatment}/\sigma^2$ are independently distributed chi-square random variables. Therefore, if the null hypothesis of no difference in treatment means is true, the ratio
+\[
+F_0 = \frac{SS_{treatment}/(a-1)}{SS_E/(N-a)} = \frac{MS_{treatment}}{MS_E}
+\]
+  
+is distributed as *F* with *a - 1* and *N - 1* degrees of freedom. This is the **test statistic** for the hypothesis of no difference in treatment means.
+  
+If the null hypothesis is false, the expected value of $MS_{treatment}$ is greater than $\sigma^2$. Therefore, under the **althernative hypothesis**, the expected value of the numerator of the test statistic is greater than the expected value of the denominator, and **we should reject $\mathbf{H_0}$ on values that are too large**.
+  
+Let's go back to our example. First, create the ANOVA table using the statistical package as part of base R.
+  
+```{r, echo = T}
+mod1 <- lm(EtchRate ~ Power, data = dat0)
+anova1 <- anova(mod1)
+print(anova1)
+```
+  
+Now, calculate the test statistic by hand.
+  
+```{r, echo = F}
+# Find Sum of Squares
+  ## Grand Mean
+  y..bar <- mean(dat0$EtchRate)
+  
+  ## Sum across replicates within treatment groups
+  level_i <- data.frame(
+    summarize(
+      group_by(dat0,Power)
+      ,yi. = sum(EtchRate)
+      ,n = length(EtchRate)
+      ,yi.bar = yi./n
+      ,yij_y..bar_sq = sum((EtchRate - y..bar)^2)
+    )
+  )
+  
+  ## Find number of observations within each treatment group
+  n <- unique(level_i$n)
+  
+  ## Find the number of treatment groups
+  a <- NROW(level_i)
+  
+  ## Calculate SS Total and SS Treatment
+  SS_trt <- n*sum((level_i$yi.bar - y..bar)^2)
+  SS_tot <- sum(level_i$yij_y..bar_sq)
 
+  ## Back-calculate SS Error
+  SS_err <- SS_tot - SS_trt
+  
+# Degrees of Freedom
+  DF_trt <- a - 1
+  DF_err <- a*n - a
+  
+# Mean Squares
+  MS_trt <- SS_trt/DF_trt
+  MS_err <- SS_err/DF_err
 
+# Test Statistic
+  F_test <- MS_trt/MS_err
+  
+# Critical F-value
+  F_crit <- qf(0.05,DF_trt,DF_err,lower.tail = F)
 
+# P-value
+  p_value <- pf(q = F_test,df1 = DF_trt,df2 = DF_err,lower.tail = F)
+
+# Table
+Anova_by_hand <- as.data.frame(array(
+  c(
+    "Power","Error","Total",
+    SS_trt,SS_err,SS_tot,
+    DF_trt,DF_err,DF_trt + DF_err,
+    MS_trt,MS_err,"-",
+    F_test,"-","-",
+    p_value,"-","-"
+  )
+  ,dim = c(3,6)
+))
+colnames(Anova_by_hand) <- c("Source fo Variation",
+                             "Sum of Squares",
+                             "Degrees of Freedom",
+                             "Mean Squares",
+                             "Test Statistic",
+                             "P-value")
+print(Anova_by_hand)
+```
 
 
 
