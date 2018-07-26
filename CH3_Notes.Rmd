@@ -9,9 +9,9 @@ library(plyr)
 library(dplyr)
 library(reshape2)
 ```
+# 3 Experiments with a Single-Factor: The Analysis of Variance
 
-
-# 3.1 An Example
+## 3.1 An Example
 In many integrated manufacturing steps, wafers are completed coated with a layer of material such as silicon dioxide or a metal. The unwanted material is then selectively removed by etching through a mask, thereby creating circuit patterns, electrical interconnects, and areas in which diffusions are to be made. A plasma etching process is widely used for this operation, particularly in small geometry applications. Energy s supplied by a radio-frequency (RF) generator causing plasma to be generated in the gap between the elecctrodes. The chemical species in the plasma are determined b the particular gases used. Fluorocarbons, such as CF_4 or C_2F_6, are often used in plasma etching, but other gases and mixtures of gases are relatively common, depending on the application.
   
 An engineer is interested in investifating the relationship between the RF power setting and the etch rate for this tool. The objective of an experiment like this is to model the relationship between etch rate and RF power, and to specify the power setting that will give a desired target etch rate. She is interested in a particular gas (C_2F_6) and gap (0.80 cm) and wants to test four levels of RF power: 160, 180, 200, and 220 W. She decided to test five wafers at each level of RF power.
@@ -57,10 +57,10 @@ Suppose we wish to test for differences between the mean etch rate at all $\alph
   
 Need to use the **Analysis of Variance**.
   
-# 3.2 The Analysis of Variance
+## 3.2 The Analysis of Variance
 Suppose we have *a* treatments, or different levels, of a single factor that we wish to compare. A response $y_{ij}$ represents the $j^{th}$ observation taken under that factor level or treatment $i$. There will be *n* observations under the $i^{th}$ treatment.
   
-### Models for the Data
+##### Models for the Data
 \[
 y_{ij} = \mu_i + \epsilon_{ij}
 \]
@@ -94,13 +94,13 @@ This is called the **one-way** or **single-factor ANOVA** model. Because runs we
 y_{ij} \sim N(\mu + \tau_i,\sigma^2)
 \]
   
-### Fixed or Random Factor
+##### Fixed or Random Factor
 The statistical model above describes two different situations with respect to the treatment effects:
   
 1. **Fixed Effects Model.** The *a* treatmens could have been specifically chosen by the experimenter. In this case, we wish to test the hypotheses about the treatment means, and our conclusion will only apply to the factor levels considered in the analysis.
 2. **Random Effects Model.** The *a* treatments could a random sample from a larger population of treatments. In this case, we wish to extend the conclusion to all treatments in the population, regardless of their inclusion in the analysis. Here, the $\tau_i$ are random variables. We test hypotheses about the variability of the $\tau_i$ (**components of variance model**).
   
-## Analysis of the Fixed Effects Model
+#### Analysis of the Fixed Effects Model
 Recall that:
   
 * $y_{i.}$ is the sum of the observations under the ith treatment
@@ -137,7 +137,7 @@ H_1 :& \tau_i \ne 0\ \text{for at least one }i
 \end{aligned}
 \]
   
-## 3.3.1 Decomposition of the Total Sum of Squares
+### 3.3.1 Decomposition of the Total Sum of Squares
 The name **analysis of variance** is derived from a partitioning of total variability into its component parts. The total corrected sum of squares
 \[
 SS_T = \sum_{i=1}^a \sum_{j=1}^n (y_{ij} - \bar y_{..})^2
@@ -174,7 +174,7 @@ There are:
 * $a-1$ degrees of freedom for treatment
 * $N-a = a(n-1)$ degrees of freedom for error (there are $n - 1$ degrees of freedom with which to measure error in each treatment group)
   
-### Sum of Squares Within Treaments ($SS_{Error}$)
+##### Sum of Squares Within Treaments ($SS_{Error}$)
 Let's look at the error sum of squares within a treatment group, that is, within treatment group $i$:
 \[
 SS_{Error} = \sum_{i=1}^a\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2 = \sum_{i=1}^a\biggr[\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]
@@ -190,7 +190,7 @@ We have $a$ sample variances, since there are $a$ treatments. These can be combi
 SS_{pooled} = \frac{\sum_{i=1}^a\biggr[\sum_{j=1}^n(y_{ij} - \bar y_{i.})^2\biggl]}{\sum_{i=1}^a(n-1)} = \frac{SS_{Error}}{N-a}
 \]
   
-### Sum of Squares Between Treatments
+##### Sum of Squares Between Treatments
 Now let's look at the other term in the total sum of squares, the sum of squares between treatments.
   
 Suppose there were no differences in between $a$ treatment means. We could use the variation in treatment group averages from the grand mean to estimate the variability in the population, $\sigma^2$:
@@ -257,7 +257,7 @@ Thus, $MS_E=SS_E/(N-a)$ estimates $\sigma^2$, and
   
 Therefore, the hypothesis test of no difference in treatment means has to compare $MS_{treatments}$ to $MS_E$.
   
-## Statistical Analysis
+#### Statistical Analysis
 We can now explore a formal test for the null hypothesis of no difference in treatment means.
   
 First, recall that we have assumed
@@ -377,6 +377,137 @@ colnames(Anova_by_hand) <- c("Source fo Variation",
                              "P-value")
 print(Anova_by_hand)
 ```
+  
+##### Manual Computations
+We typically define the sum of squares in terms of **averages**; that is
+\[
+SS_{treatments} = n\sum_{i=1}^a(\bar y_{i.} - \bar y_{..})^2
+\]
+  
+but we developed the computing formulas using **totals**. For example,
+\[
+SS_{treatments} = \frac{1}{n}\sum_{i=1}^a y_{i.}^2 - \frac{y_{..}^2}{N}
+\]
+  
+Totals are not as subject to rounding error as averages, though we generally don't need to worry when using statistical software.
+  
+### 3.3.3 Estimation of the Model Parameters
+We now present estimators for the parameters in the single-factor model
+\[
+y_{ij} = \mu + \tau_i + \epsilon_{ij}
+\]
+  
+and confidence intervals on the treatment means. We will prove later that reasonable estimates of the overall mean and treatment effects are given by
+\[
+\begin{aligned}
+\hat\mu &= \bar y_{..}\\
+\hat\tau_i &= \bar y_{i.} - \bar y_{..},\ i=1,2,...,a
+\end{aligned}
+\]
+  
+A **confidence interval** of the estimate of the ith treatment mean ($\hat\mu_i$) is easily determined. The mean of the ith treatment is
+\[
+\mu_i = \mu + \tau_i
+\]
+  
+A **point estimator** of $\mu_i$ would be $\hat\mu_i=\hat\mu + \hat\tau_i=\bar y_{i.}$. If we assume that the errors are normally distributed, each treatment average $\bar y_{i.}$ is distributed $NID(\mu_i,\sigma^2/n)$. Thus, if $\sigma^2$ were known, we could use the normal distribution to define the confidence interval. Using the $MS_E$ as an **estimator of $\mathbf{\sigma^2}$**, we would base the confidence interval on the **t distribution**. Therefore, a $100(1-\alpha)$ percent confidence interval on the ith treatment mean $\mu$ is
+\[
+\bar y_{i.} - t_{\alpha/2,N-a}\sqrt{\frac{MS_E}{n}} \le \mu_i \le \bar y_{i.} + t_{\alpha/2,N-a}\sqrt{\frac{MS_E}{n}}
+\]
+  
+We can also calculate the confidence interval for the **difference in two treatment means** as
+\[
+\bar y_{i.} - \bar y_{j.} - t_{\alpha/2,N-a}\sqrt{\frac{2MS_E}{n}} \le \mu_i - \mu_{j.} \le \bar y_{i.} - \bar y_{j.} + t_{\alpha/2,N-a}\sqrt{\frac{2MS_E}{n}}
+\]
+  
+This is a **one-at-a-time** confidence interval. However, in many cases we may wish to calcualte several confidence intervals, one for each mean or difference in means. If there are $r$ such $100(1-\alpha)$ percent confidence intervals of interest, the probability that all $r$ intervals are **simultaneously** correct is $1-r\alpha$. The probability $r\alpha$ is called the **experimentwise error rate**. This can get big really quick.
+  
+An alternative is to use the **Bonferroni Method** by replacing $\alpha/2$ in the one-at-a-time confidence intervals with $\alpha/(2r)$, which allows us to construct a set of $r$ simultaneous confidence intervals on treatment means or differences in treatment means for which the **overall confidence is at least $\mathbf{100(1-\alpha)}$ percent.
+  
+### 3.3.4 Unbalanced Data
+In some single-factor experiments, the **number of observations taken within each treatment** may be different, a design which is **unbalanced**.
+  
+Let's look at the effect of the sum of squares. Let $n_i$ observations be taken under treatment $i$, $i = 1,2,...,a$ and $N = \sum_{i=1}^a n_i$. The **manual computations** for $SS_T$ and $SS_{treatments}$ are now slightly different:
+\[
+\begin{aligned}
+SS_T &= \sum_{i=1}^a\sum_{j=1}^n y_{ij}^2 - \frac{y_{..}^2}{N},\\
+SS_{treatments} &= \sum_{i=1}^a\frac{y_{i.}^2}{n_i} - \frac{y_{..}^2}{N}
+\end{aligned}
+\]
+  
+No other changes are required in the analysis of variance.
+  
+There are two advantages in choosing a **balanced** design:
+  
+1. The test statistic is relatively insensitive to small departures from the assumption of equal variances for the $a$ treatments if the sample sizes are equal; that is not the case for unequal sample sizes.
+2. The **power is maximized** if the sample sizes are equal.
+  
+## 3.4 Model Adequacy Checking
+The use of partitioning the sum of squares to test formally for no differences in treatment mean requires that certain assumptions be satisfied. Specifically,
+  
+* The observations are adequately described by the model $y_{ij} = \mu + \tau_i + \epsilon_{ij}$
+* The errors are normally and identically distributed with mean zero and constant but unknown variance $\sigma^2$.
+  
+If these assumptions are valid, the analysis of variance procedure is an exact test of the hypothesis of no difference in treatment means. But, these assumptions need to be checked. Violations of these assumptions can be easily investigated by the examination of **residuals**. We define the residual for observation $j$ in treatment $i$ as
+\[
+e_{ij} = y_{ij} - \hat y_{ij}
+\]
+  
+where $\hat y_{ij}$ is the estimate of the corresponding observation $y_{ij}$ obtained by
+\[
+\begin{aligned}
+\hat y_{ij} &= \hat\mu + \hat\tau_i\\
+&=\bar y_{..} + (\bar y_{i.} - \bar y_{..})\\
+&=\bar y_{i.}
+\end{aligned}
+\]
+  
+If the model is adequate, the residuals should be **structureless**, i.e., should not contain any obvious patterns.
+  
+### 3.4.1 The Normality Assumption
+A check of the normality assumption could be made by plotting a **histogram of the residuals**; if the normality assumption holds, the plot should look like a sample from normal distribution centered at zero. However, with small sample sizes this appearance is easily distorted, and visually moderate departure from normality does not necessarily imply a serious violation of the assumptions.
+  
+Consider a **normal probability plot** of the residuals. If the underlying distribution of the errors is normal, this plot will resemble a straight line. Note that more emphasis should be placed on the central values of the plot than on the extremes.
+  
+In the plot below, the tendency of the normal quantile-quantile plot to bend slightly **down on the left side** and **upward slightly on the right side** implies that the tails of the error are somewhat **thinner** than what would be anticipated in a normal distribution
+
+  
+```{r, echo = T}
+# Normal Quantile-Quantile Plot - residuals
+qqnorm(mod1$residuals,datax = T);qqline(mod1$residuals,datax = T)
+```
+  
+We say that the analysis of variance is **robust** to the normality assumption because the *F* test is only slightly affected by depatures from normlity. In general, moderate departures from normality are of little concern in the **fixed effects** analysis of variance. An error distribution with thinner or thicker tails is more concerning than a skewed distribution.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
