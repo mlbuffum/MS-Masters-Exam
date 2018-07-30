@@ -8,6 +8,8 @@ knitr::opts_chunk$set(echo = TRUE)
 library(plyr)
 library(dplyr)
 library(reshape2)
+library(knitr)
+library(ggplot2)
 ```
 # 3 Experiments with a Single-Factor: The Analysis of Variance
 
@@ -477,24 +479,326 @@ In the plot below, the tendency of the normal quantile-quantile plot to bend sli
 qqnorm(mod1$residuals,datax = T);qqline(mod1$residuals,datax = T)
 ```
   
-We say that the analysis of variance is **robust** to the normality assumption because the *F* test is only slightly affected by depatures from normlity. In general, moderate departures from normality are of little concern in the **fixed effects** analysis of variance. An error distribution with thinner or thicker tails is more concerning than a skewed distribution.
+We say that the analysis of variance is **robust** to the normality assumption because the *F* test is only slightly affected by depatures from normlity. In general, moderate departures from normality are of little concern in the **fixed effects** analysis of variance. An error distribution with thinner or thicker tails is more concerning than a skewed distribution. The **random effects model** is more severly affected by nonnormality.
+  
+An **outlier** is a residual that is very much larger than the others, and these can seriously **distort the analysis of variance**. We can roughly check for outliers by examining the **standardized residuals**
+\[
+d_{ij} = \frac{e_{ij}}{\sqrt{MS_E}}
+\]
+  
+These should be approximately **normal** with mean zero and variance of one. A residual bigger than 3 or 4 standard deviations away from zero is a potential outlier.
+  
+### 3.4.2 Plot of Residuals in Time Series
+To detect **correlation** between residuals, plot residuals in order of data collection. If you see runs of positive or negative residuals, then the errors may be violating the **independence assumption** on the errors. Proper randomization of the experiment is important in obtaining independence.
+  
+**Nonconstant variance** is another violation of assumptions, and is generally seen as more spread at one end than the other in a plot of redisuals versus time. For example, say the skill of the experimenter, operator, or subject changed over time.
+  
+### 3.4.3 Plot of Residuals Versus Fitted Values.
+If the model is correct and assumptions are satisfied, the residuals should be unrelated to any other variable, including the predicted response. The plot of residuals versus fitted values for the data are below. No unusual structure is apparent.
+  
+```{r, echo = T}
+plot(mod1,which = 1)
+```
+  
+Here is where we might see **nonconstant variance**, when the variance of the observations increases as the magnitude of the observation increases:
+  
+* This is the case when the error or background noise is a constant percentage of the size of the observation like, for example, with many measuring instruments.
+* This can also happen when the data follow a nonnormal, skewed distribution, because in skewed distribution the **variance tends to be a function of the mean**.
+  
+The *F* test is only affected by violation of the homogeneity of variances assumption if the **balanced** fixed effects model. However, in **unbalanced** designs or in **cases where one variance is much larger than the others**, is more serious:
+  
+* If the factor levels with large variances also have the smaller sample sizes, the actual **Type I Error** is larger than anticipated (confidence intervals have **lower actual confidence levels** than specified).
+* If the the factor levels with larger variances also have the larger sample sizes, the **significance levels** are smaller than anticipated (**confidence levels are higher**).
+  
+For random effects models, unequal error variances can significantly disturb inferences on variance components even when designs are balanced.
+  
+To deal with nonconstant variance, we can usually apply a **variance-stabilizing transformation**. Conclusions of the analysis of variance will then apply to the **transformed population**.
+  
+* If observations follow the **Poisson Distribution**, the **square root transformation**, $y_{ij}^{\star} = \sqrt{y_)_{ij}}$ or $y_{ij}^{\star} = \sqrt{1 + y_{ij}}$ would be used.
+* If observations follow follow the **lognormal distribution**, then the **logarithmic transformation** $y_{ij}^{\star} = log(y_{ij})$ is appropriate.
+* For **binomial data** expressed as fractions, the **arcsin transformation** $y_{ij}^{\star} = arcsin \sqrt{y_{ij}}$.
+  
+When there is no obvious transformation, the experimenter usually *empirically* seeks a transformation that equalizes the variance regardless of the value of the mean.
+  
+##### Statistical Tests for Equality of Variance
+We can use formal tests of the hypotheses
+\[
+\begin{aligned}
+H_0:& \sigma_1^2 = \sigma_2^2 = ... = \sigma_a^2\\
+H_1:&\text{above not true for at least one }\sigma_i^2
+\end{aligned}
+\]
+  
+A widely used procedure is **Bartlett's test**, which involves computing a statistic whose distribution is closely approximated by the chi-square distribution with $a - 1$ degrees of freedom when the *a* random samples are drawn from independent normal populations. The test statistic is
+\[
+\chi_0^2 = 2.3026\frac{q}{c}
+\]
+  
+where
+\[
+\begin{aligned}
+q &= (N-a)log_{10}(S_p^2) - \sum_{i=1}^a(n_i - 1)log_{10}(S_i^2)\\
+c &= 1 + \frac{1}{3(a-1)}(\sum_{i=1}^a(n_i - 1)^{-1} - (N-a)^{-1})\\
+S_p^2 &= \frac{\sum_{i=1}^a(n_i - 1)S_i^2}{N-a}
+\end{aligned}
+\]
+  
+and $S_i^2$ is the sample variance of the ith population.
+  
+* *q* is **large** when the sample variances $S_i^2$ **differ greatly**.
+* *q* is **equal to zero** when all $S_i^2$ are **equal**.
+  
+Therefore, we should reject $H_0$ on values of $\chi_0^2$ that are too large, when
+\[
+\chi_0^2 > \chi_{\alpha,\alpha-1}^2
+\]
+  
+**Bartlett's test** is very sensitive to the normality assumption, and so can only be used when the validity of this assumption is not in doubt.
+  
+The result of Bartlett's test is provided below. We fail to reject the null hypothesis of constant variance.
+```{r, echo = T}
+# Bartlett's Test in R
+mod1$call
+bart.test <- bartlett.test(EtchRate ~ Power, data = dat0)
+bart.test
+## Matches example in book.
+crit.value <- qchisq(0.05,a-1,lower.tail = F);crit.value
+p.value    <- pchisq(bart.test$statistic,a-1,lower.tail = F);p.value
+```
+  
+The **modified Levene test** can be used in situations when the nonnormality assumption is not met (and Bartlett's test cannot be used). The modified Levene's test uses the absolute deviation of observations $y_{ij}$ in each treatment from the treatment median $\tilde{y_{ij}}$:
+\[
+d_{ij} = |y_{ij} - \tilde{y_{ij}}|\ \text{for }i=1,...a\text{ and }j=1,...,n_i
+\]
+  
+The modified Levene's test evaluates whether the means of these deviations are equal for all treatments. If the mean deviations are equal, the variations of the observations in all treatments will be the same. The test statistic is the usual ANOVA *F* statistic for test equality of means applied to the absolute deviations.
+  
+```{r, echo = T}
+# New Data: Peak Discharge by Estimation Methods
+dat1 <- as.data.frame(
+  array(
+    c(
+      rep(c(1,2,3,4),6),
+    0.34,0.91,6.31,17.15,
+    0.12,2.94,8.37,11.82,
+    1.23,2.14,9.75,10.95,
+    0.70,2.36,6.09,17.20,
+    1.75,2.86,9.82,14.35,
+    0.12,4.55,7.24,16.82
+    )
+    ,dim = c(4*6,2)
+  )
+)
 
+colnames(dat1) <- c("EstimationMethod","PeakDischarge")
 
+# Calculate mean, median, and standard deviation
 
+level_i <- data.frame(
+  summarize(
+    group_by(dat1,EstimationMethod)
+    ,n_i       = length(PeakDischarge)
+    ,yi.bar    = mean(PeakDischarge)
+    ,yi.median = median(PeakDischarge)
+    ,Si        = sd(PeakDischarge)
+  )
+)
 
+# Calculate Deviations for Modified Levene's test
+dat1_median <- merge(dat1,level_i,by="EstimationMethod")
+dat1_median$d_ij <- abs(dat1_median$PeakDischarge - dat1_median$yi.median)
 
+# Analysis of Variance
+dat1_median$EstimationMethod <- as.factor(dat1_median$EstimationMethod)
+mod2 <- lm(PeakDischarge ~ EstimationMethod, data = dat1_median)
+anova(mod2)
 
+# Look at normal QQ plot
+qqnorm(mod2$residuals,datax = T);qqline(mod2$residuals,datax = T)
 
+# Look at plot of residuals versus fitted values
+plot(mod2, which = 1)
 
+```
+  
+##### Empirical Selection of a Transformation
+Let $E(y) = \mu$ be the mean of *y*, and suppose that the standard deviation of *y* is proportional to a power of the mean of *y* such that
+\[
+\sigma_y \propto \mu^{\alpha}
+\]
+  
+We want to find a transformation on *y* that yields a constant variance. Suppose that the transformation is a power of the original data, say
+\[
+y^{\star} = y^{\lambda}
+\]
+  
+Then it can be shown that
+\[
+\sigma_{y^{\star}} \propto \mu^{\lambda + \alpha-1}
+\]
+  
+If we set $\lambda = 1 - \alpha$, the variance of the transformed data $y^{\star}$ is constant. See a list of common transformations in the table below. Note that $\lambda = 0$ implies the log transformation. These transformations are ordered by an increase in **strength* (the amount of curvature it induces). Transformations have little effect unless the ratio of $y_{max}/y_{min}$ is greater than 2 or 3.
+  
+We can usually empirically estimate $\alpha$ from the data. Because the ith treatment combination $\sigma_{y_i} \propto \mu_i^{\alpha} = \theta\mu_i^{\alpha}$, where $\theta$ is a **constant of proportionality**, we may take logs to obtain
+\[
+log(\sigma_{y_i}) = log(\theta) + \alpha log(\mu_i)
+\]
+  
+Therefore, a **plot of $\mathbf{log(\sigma_{y_i})}$ versus $\mathbf{log(\mu_{i})}$** would be a straight line with slope of $\alpha$. Because we don't know $\sigma_{y_i}$ or $\mu_i$, we subsitute reasonable estimates of them ($S_i$ and $\bar y_{i.}$) into the equation and fit the regression, estimating $\alpha$, the slope.
+  
+```{r, echo = F}
+TransformationTab <- as.data.frame(
+  array(c(
+    "$\\sigma_y \\propto\\ \\text{constant}$",
+    "$\\sigma_y \\propto\\ \\mu^{1/2}$",
+    "$\\sigma_y \\propto\\ \\mu$",
+    "$\\sigma_y \\propto\\ \\mu^{3/2}$",
+    "$\\sigma_y \\propto\\ \\mu^{2}$",
+    
+    "0","1/2","1","3/2" ,"2" ,
+    "1","1/2","0","-1/2","-1",
+    
+    "No transformation","Square Root","Log","Reciprocal of square root","Reciprocal",
+    
+    "","Poisson (count) data","","",""
+  ),dim = c(5,5))
+)
 
+knitr::kable(
+  TransformationTab,
+  row.names = FALSE,
+  col.names = c("Relationship Between $\\sigma_y$ and $\\mu$",
+                "$\\alpha$","$\\lambda = 1 - \\alpha$",
+                "Transformation","Comment"))
+```
+  
+Let's take a look at the peak discharge data and the possibility of using a variance-stabilizing transformation. First, we plot $log(S_i)$ versus $log(\bar y_{i.})$.
+  
+```{r, echo = T}
+varstab.fit <- lm(I(log(Si)) ~ I(log(yi.bar)), data = level_i)
+varstab.fit
+plot(x = log(level_i$yi.bar),y = log(level_i$Si))
+```
+  
+The slope, our estimate of $\alpha$, is `r varstab.fit$coefficients[2]`, which is almost 1/2. From the table of transformations, a square root transformation may be appropriate. The analysis of variance table is provided below.
+  
+```{r,echo = T}
+mod3 <- lm(I(sqrt(PeakDischarge)) ~ EstimationMethod, data = dat1_median)
+anova(mod3)
+```
+  
+But we need to **manually decrease the degrees of freedom by 1** and re-run the F-test; this is to account for the use of the data to estimate the transformation parameter $\alpha$. The updated results are below.
+  
+```{r, echo = T}
+# Establish table to fill in
+anova3a <- data.frame(anova(mod3))
 
+# Re-calculate MSE and F test, update p-value
+anova3a["Residuals","Df"] <- anova3a["Residuals","Df"] - 1
+anova3a["Residuals","Mean.Sq"] <- 
+  anova3a["Residuals","Sum.Sq"]/anova3a["Residuals","Df"]
+anova3a["EstimationMethod","F.value"] <-
+  anova3a["EstimationMethod","Mean.Sq"]/anova3a["Residuals","Mean.Sq"]
+anova3a["EstimationMethod","Pr..F."] <- pf(
+  anova3a["EstimationMethod","F.value"],
+  anova3a["EstimationMethod","Df"],
+  anova3a["Residuals","Df"],
+  lower.tail = F
+)
 
+# Final Analysis of Variance Table
+anova3a
+```
+  
+The plot of residuals versus fitted values is shown below. We see that the variance appears much more constant.
+  
+```{r, echo  T}
+plot(mod3,which = 1)
+```
+  
+### Plots of Residuals Versus Other Variables
+The residuals should be plotted against any other variables that might possibly affect the response. Patters in such residual plots suggest that the variable affects the response, and the variable should either be controlled more carefully in future experiments or included in the analysis.
+  
+## 3.5 Practical Interpretation of Results.
+### 3.5.1 A Regression Model
+Factors involved in an experiment can be either:
+  
+* **quantitative**, whose levels can be associated with points on a numerical scale, or
+* **qualitative**, whose levels cannot be arranged in order of magnitude.
+  
+Operators, batches of raw material, and shifts are typical qualitative factors because there is no reason to rank them in any particular numerical order. The analysis of variance treat the design factor as if it were qualitive or categorical (without numerical meaning). If the factor really is qualitative, responses for a subsequent run at intermediate levels are not meaningful (for example, we don't really want to predict responses for an operator between the second and third in the experiment).
+  
+However, if the levels can be ordered numerically, say 1.0, 2.0, and 3.0, we may want to predict the response at 2.5. Thus, the experimenter is frequently interested in developing an **interpolation equation** for the response variable in the experiment. This equation is an **empirical model** of the process that has been studied.
+  
+We can see from the scatterplot of Power against Etch Rate that there is a strong relationship between the two variables. At first we try fitting a **linear model**:
+\[
+y = \beta_0 + \beta_1x + \epsilon
+\]
+  
+where $\beta_0$ and $\beta_1$ are unknown parameters to be estimated and $\epsilon$ is a random error term. We use the **method of least squares** to estimate model parameters. In the linear model, the least squares fit in our example is
+  
+\[
+\hat y = 137.62 + 2.527x
+\]
+  
+```{r, echo = T}
+mean(dat0$EtchRate) - 137.62
+mean(as.numeric(dat0$Power))
+lm(EtchRate ~ I(as.numeric(Power)), data = dat0)
+  ## Can't replicate the model in the book yet, unsure why
 
+dat0_wide <- dcast(data = dat0
+                   ,Power ~ Replication
+                   ,value.var = "EtchRate")
 
+```
+  
+```{r, echo = T}
+# By hand
+EtchRate_i <- data.frame(
+  summarize(
+    group_by(dat0,Power)
+    ,yi.bar = mean(EtchRate)
+  )
+)
 
+y..bar <- mean(dat0$EtchRate)
 
+EtchRate_i$Estimate <- EtchRate_i$yi.bar - y..bar
 
+EtchRate_i
 
+# In R
+## Need to demean the response to get estimates of treatment effects
+mod1_numeric <- lm(I(EtchRate - mean(EtchRate)) ~ 0 + Power, data = dat0)
+  # Supress intercept so that we can estimate yi.bar for all levels
+data.frame(summary(mod1_numeric)$coefficients)
+```
+  
+This linear model is shown in the plot below. We can see that it does not perform well at high levels of Power.
+  
+```{r, echo = T}
+# Plot data points and trendline
+ggplot(data = dat0,mapping = aes(x = as.numeric(Power),
+                                 y = EtchRate)) + 
+  geom_point() +
+  geom_smooth(method = "lm")
+```
+  
+We can try to improve on the model by fitting a **quadratic model** and adding a quadratic term in *x*. The resulting model fit is
+  
+```{r, echo = T}
+# Fit the quadratic model
+lm(EtchRate ~ I(as.numeric(Power)) + I(as.numeric(Power)^2), data = dat0)
+```
+  
+```{r, echo = T}
+# Plot data points and trendline
+ggplot(data = dat0,mapping = aes(x = as.numeric(Power),
+                                 y = EtchRate)) + 
+  geom_point() +
+  stat_smooth(method = "lm")
+```
 
 
 
