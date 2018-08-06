@@ -10,6 +10,8 @@ library(dplyr)
 library(reshape2)
 library(knitr)
 library(ggplot2)
+library(metRology)
+library(car)
 ```
 # 3 Experiments with a Single-Factor: The Analysis of Variance
 
@@ -306,9 +308,15 @@ If the null hypothesis is false, the expected value of $MS_{treatment}$ is great
 Let's go back to our example. First, create the ANOVA table using the statistical package as part of base R.
   
 ```{r, echo = T}
-mod1 <- lm(EtchRate ~ Power, data = dat0)
-anova1 <- anova(mod1)
-print(anova1)
+mod_EtchRate <- lm(formula = EtchRate ~ Power
+                   ,data   = dat0
+                   ,contrasts = contr.sum)
+anova_EtchRate_base <- anova(mod_EtchRate)
+anova_EtchRate_car  <- Anova(mod_EtchRate,type = "III")
+print(anova_EtchRate_base)
+print(anova_EtchRate_car)
+
+
 ```
   
 Now, calculate the test statistic by hand.
@@ -476,7 +484,7 @@ In the plot below, the tendency of the normal quantile-quantile plot to bend sli
   
 ```{r, echo = T}
 # Normal Quantile-Quantile Plot - residuals
-qqnorm(mod1$residuals,datax = T);qqline(mod1$residuals,datax = T)
+qqnorm(mod_EtchRate$residuals,datax = T);qqline(mod_EtchRate$residuals,datax = T)
 ```
   
 We say that the analysis of variance is **robust** to the normality assumption because the *F* test is only slightly affected by depatures from normlity. In general, moderate departures from normality are of little concern in the **fixed effects** analysis of variance. An error distribution with thinner or thicker tails is more concerning than a skewed distribution. The **random effects model** is more severly affected by nonnormality.
@@ -497,7 +505,7 @@ To detect **correlation** between residuals, plot residuals in order of data col
 If the model is correct and assumptions are satisfied, the residuals should be unrelated to any other variable, including the predicted response. The plot of residuals versus fitted values for the data are below. No unusual structure is apparent.
   
 ```{r, echo = T}
-plot(mod1,which = 1)
+plot(mod_EtchRate,which = 1)
 ```
   
 Here is where we might see **nonconstant variance**, when the variance of the observations increases as the magnitude of the observation increases:
@@ -558,7 +566,7 @@ Therefore, we should reject $H_0$ on values of $\chi_0^2$ that are too large, wh
 The result of Bartlett's test is provided below. We fail to reject the null hypothesis of constant variance.
 ```{r, echo = T}
 # Bartlett's Test in R
-mod1$call
+mod_EtchRate$call
 bart.test <- bartlett.test(EtchRate ~ Power, data = dat0)
 bart.test
 ## Matches example in book.
@@ -575,7 +583,7 @@ The modified Levene's test evaluates whether the means of these deviations are e
   
 ```{r, echo = T}
 # New Data: Peak Discharge by Estimation Methods
-dat1 <- as.data.frame(
+dat_PeakDischarge <- as.data.frame(
   array(
     c(
       rep(c(1,2,3,4),6),
@@ -590,13 +598,13 @@ dat1 <- as.data.frame(
   )
 )
 
-colnames(dat1) <- c("EstimationMethod","PeakDischarge")
+colnames(dat_PeakDischarge) <- c("EstimationMethod","PeakDischarge")
 
 # Calculate mean, median, and standard deviation
 
 level_i <- data.frame(
   summarize(
-    group_by(dat1,EstimationMethod)
+    group_by(dat_PeakDischarge,EstimationMethod)
     ,n_i       = length(PeakDischarge)
     ,yi.bar    = mean(PeakDischarge)
     ,yi.median = median(PeakDischarge)
@@ -605,19 +613,34 @@ level_i <- data.frame(
 )
 
 # Calculate Deviations for Modified Levene's test
-dat1_median <- merge(dat1,level_i,by="EstimationMethod")
-dat1_median$d_ij <- abs(dat1_median$PeakDischarge - dat1_median$yi.median)
+dat_PeakDischarge_median <- merge(
+  x   = dat_PeakDischarge
+  ,y  = level_i
+  ,by ="EstimationMethod")
+
+dat_PeakDischarge_median$d_ij <- abs(
+  dat_PeakDischarge_median$PeakDischarge - dat_PeakDischarge_median$yi.median)
 
 # Analysis of Variance
-dat1_median$EstimationMethod <- as.factor(dat1_median$EstimationMethod)
-mod2 <- lm(PeakDischarge ~ EstimationMethod, data = dat1_median)
-anova(mod2)
+dat_PeakDischarge_median$EstimationMethod <- as.factor(
+  dat_PeakDischarge_median$EstimationMethod)
+
+mod_PeakDischarge <- lm(
+  formula    = PeakDischarge ~ EstimationMethod
+  ,data      = dat_PeakDischarge_median
+  ,contrasts = contr.sum)
+
+anova_PeakDischarge_car <- Anova(mod_PeakDischarge)
+anova_PeakDischarge_car$Mean.Sq <- anova_PeakDischarge_car$`Sum Sq`/anova_PeakDischarge_car$Df
+
+print(anova_PeakDischarge_car)
 
 # Look at normal QQ plot
-qqnorm(mod2$residuals,datax = T);qqline(mod2$residuals,datax = T)
+qqnorm(mod_PeakDischarge$residuals,datax = T)
+qqline(mod_PeakDischarge$residuals,datax = T)
 
 # Look at plot of residuals versus fitted values
-plot(mod2, which = 1)
+plot(mod_PeakDischarge, which = 1)
 
 ```
   
@@ -683,37 +706,47 @@ plot(x = log(level_i$yi.bar),y = log(level_i$Si))
 The slope, our estimate of $\alpha$, is `r varstab.fit$coefficients[2]`, which is almost 1/2. From the table of transformations, a square root transformation may be appropriate. The analysis of variance table is provided below.
   
 ```{r,echo = T}
-mod3 <- lm(I(sqrt(PeakDischarge)) ~ EstimationMethod, data = dat1_median)
-anova(mod3)
+mod_PeakDischarge_trans <- lm(
+  formula    = I(sqrt(PeakDischarge)) ~ EstimationMethod
+  ,data      = dat_PeakDischarge_median
+  ,contrasts = contr.sum)
+
+Anova(mod_PeakDischarge_trans)
 ```
   
 But we need to **manually decrease the degrees of freedom by 1** and re-run the F-test; this is to account for the use of the data to estimate the transformation parameter $\alpha$. The updated results are below.
   
 ```{r, echo = T}
 # Establish table to fill in
-anova3a <- data.frame(anova(mod3))
+anova_PeakDischarge_car_trans <- data.frame(Anova(mod_PeakDischarge_trans))
 
 # Re-calculate MSE and F test, update p-value
-anova3a["Residuals","Df"] <- anova3a["Residuals","Df"] - 1
-anova3a["Residuals","Mean.Sq"] <- 
-  anova3a["Residuals","Sum.Sq"]/anova3a["Residuals","Df"]
-anova3a["EstimationMethod","F.value"] <-
-  anova3a["EstimationMethod","Mean.Sq"]/anova3a["Residuals","Mean.Sq"]
-anova3a["EstimationMethod","Pr..F."] <- pf(
-  anova3a["EstimationMethod","F.value"],
-  anova3a["EstimationMethod","Df"],
-  anova3a["Residuals","Df"],
+anova_PeakDischarge_car_trans["Residuals","Df"] <-
+  anova_PeakDischarge_car_trans["Residuals","Df"] - 1
+
+anova_PeakDischarge_car_trans[,"Mean.Sq"] <- 
+  anova_PeakDischarge_car_trans["Sum.Sq"]/
+  anova_PeakDischarge_car_trans["Df"]
+
+anova_PeakDischarge_car_trans["EstimationMethod","F.value"] <-
+  anova_PeakDischarge_car_trans["EstimationMethod","Mean.Sq"]/
+  anova_PeakDischarge_car_trans["Residuals","Mean.Sq"]
+
+anova_PeakDischarge_car_trans["EstimationMethod","Pr..F."] <- pf(
+  anova_PeakDischarge_car_trans["EstimationMethod","F.value"],
+  anova_PeakDischarge_car_trans["EstimationMethod","Df"],
+  anova_PeakDischarge_car_trans["Residuals","Df"],
   lower.tail = F
 )
 
 # Final Analysis of Variance Table
-anova3a
+anova_PeakDischarge_car_trans
 ```
   
 The plot of residuals versus fitted values is shown below. We see that the variance appears much more constant.
   
 ```{r, echo  T}
-plot(mod3,which = 1)
+plot(mod_PeakDischarge_trans,which = 1)
 ```
   
 ### Plots of Residuals Versus Other Variables
@@ -742,9 +775,10 @@ where $\beta_0$ and $\beta_1$ are unknown parameters to be estimated and $\epsil
 \]
   
 ```{r, echo = T}
-mean(dat0$EtchRate) - 137.62
-mean(as.numeric(dat0$Power))
-lm(EtchRate ~ I(as.numeric(Power)), data = dat0)
+dat0_coded <- dat0
+dat0_coded$EtchRate <- dat0_coded$EtchRate - 600
+
+lm(EtchRate ~ I(as.numeric(Power)), data = dat0_coded)
   ## Can't replicate the model in the book yet, unsure why
 
 dat0_wide <- dcast(data = dat0
@@ -754,7 +788,8 @@ dat0_wide <- dcast(data = dat0
 ```
   
 ```{r, echo = T}
-# By hand
+# Calculate estimates of treatment effects
+## By hand
 EtchRate_i <- data.frame(
   summarize(
     group_by(dat0,Power)
@@ -768,11 +803,24 @@ EtchRate_i$Estimate <- EtchRate_i$yi.bar - y..bar
 
 EtchRate_i
 
-# In R
-## Need to demean the response to get estimates of treatment effects
-mod1_numeric <- lm(I(EtchRate - mean(EtchRate)) ~ 0 + Power, data = dat0)
-  # Supress intercept so that we can estimate yi.bar for all levels
-data.frame(summary(mod1_numeric)$coefficients)
+## In R
+### (1) Suppress Intercept and remove mean from response
+mod_EtchRate_demean <- lm(
+  formula    = I(EtchRate - mean(EtchRate)) ~ 0 + Power
+  ,data      = dat0
+  ,contrasts = contr.sum)
+
+coef(mod_EtchRate_demean)
+
+### (2) Suppress intercept and subtract mean
+mod_EtchRate_noint <- lm(
+  formula = EtchRate ~ 0 + Power
+  ,data = dat0
+  ,contrasts = contr.sum
+)
+
+coef(mod_EtchRate_noint) - mean(dat0$EtchRate)
+
 ```
   
 This linear model is shown in the plot below. We can see that it does not perform well at high levels of Power.
@@ -789,16 +837,370 @@ We can try to improve on the model by fitting a **quadratic model** and adding a
   
 ```{r, echo = T}
 # Fit the quadratic model
-lm(EtchRate ~ I(as.numeric(Power)) + I(as.numeric(Power)^2), data = dat0)
+mod_EtchRate_quad <- lm(
+  formula = EtchRate ~ I(as.numeric(Power)) + I(as.numeric(Power)^2)
+  ,data = dat0
+  ,contrasts = contr.sum)
+summary(mod_EtchRate_quad)
+
+  ## Still can't replicate book
+
 ```
   
 ```{r, echo = T}
 # Plot data points and trendline
-ggplot(data = dat0,mapping = aes(x = as.numeric(Power),
-                                 y = EtchRate)) + 
+ggplot(data    = dat0,
+       mapping = aes(x = as.numeric(Power),
+                     y = EtchRate)) + 
   geom_point() +
-  stat_smooth(method = "lm")
+  stat_smooth(method = "lm", formula = y ~ x + I(x^2), size = 1)
 ```
+  
+In general, we would like to fit the lowest order polynomial that adequately describes the data.
+  
+### 3.5.2 Comparisons Among Treatment Means
+Suppose that in conducting the analysis of variance for the fixed efects model the null hypothesis is rejected; there are differences between the treatment means, but exactly *which* means differ is not yet certain. The procedure for making comparisons between either treatment means $\mu_i$ (estimated by $\bar y_{i.}$) or treatment totals (estimated by $y_{i.}$) is called **multiple comparison methods**.
+  
+### 3.5.3 Graphical Comparisons of Means
+Plot each of the treatment means as if the point estimates were drawn from a normal distribution with mean $\bar y_{..}$ and standard deviation $\sqrt{MS_E}$ from the analysis of variance and use a *t* distribution with a scale factor $\sqrt{MS_E/n}$ instead of the normal.
+  
+```{r, echo = T}
+anova_EtchRate_car$Mean.Sq <- 
+  anova_EtchRate_car$`Sum Sq`/anova_EtchRate_car$Df
+
+scale.factor <- sqrt(
+  anova_EtchRate_car["Residuals","Mean.Sq"]/
+    mean(length(unique(dat0$Replication)))
+  )
+
+ggplot() + 
+ geom_density(mapping = aes(
+   x     = rt.scaled(100000,
+                     df   = anova_EtchRate_car["Power","Df"],
+                     mean = mean(dat0$EtchRate),
+                     sd   = scale.factor),
+   fill  = "red",
+   alpha = 0.001)
+   ) +
+  geom_point(mapping = aes(x = c(mod_EtchRate$coefficients[1],
+                                 mod_EtchRate$coefficients[1] + mod_EtchRate$coefficients[2],
+                                 mod_EtchRate$coefficients[1] + mod_EtchRate$coefficients[3],
+                                 mod_EtchRate$coefficients[1] + mod_EtchRate$coefficients[4]),
+                           y = c(0,0,0,0))
+             ) +
+  scale_x_continuous(limits = c(500,750))
+```
+  
+### 3.5.4 Contrasts
+Many multiple comparison methods use the idea of **contrast**. The null hypothesis was rejected, but which power settings actually produced different etch rates from the others? Let's say we suspected that 200 W and 220 W produced different means. The we would be testing the hypothesis
+\[
+\begin{aligned}
+H_0:& \mu_3 - \mu_4 = 0\\
+H_1:& \mu_3 - \mu_4 \ne 0 
+\end{aligned}
+\]
+  
+Let's say we suspected the that average of the two highest power settings were different from the average of the two lowest power settings, wanting to test the hypothesis
+\[
+\begin{aligned}
+H_0:& \mu_1 + \mu_2 - (\mu_3 + \mu_4) = 0\\
+H_1:& \mu_1 + \mu_2 - (\mu_3 + \mu_4) \ne 0 
+\end{aligned}
+\]
+  
+In general, a **contrast** is a linear combinations of parameters of the form
+\[
+\Gamma = \sum_{i=1}^a c_i\mu_i
+\]
+  
+where **contrast constants** $c_1,c_2,...,c_a$ sum to zero. Both of the above hypotheses can be expressed in terms of contrasts:
+\[
+\begin{aligned}
+H_0:& \sum_{i=1}^a c_i\mu_i = 0\\
+H_1:& \sum_{i=1}^a c_i\mu_i \ne 0
+\end{aligned}
+\]
+  
+The contrast constants for the first hypotheses above are
+\[
+c_1 = c_2 = 0,\ c_3 = 1,\ c_4 = -1
+\]
+  
+and the contrast constrants for the second hypotheses above are
+\[
+c_1 = c_2 = 1,\ c_3 = c_4 = -1
+\]
+  
+Testing hypotheses involving contrasts can be done in two basic ways. Both, however, start from writing the contrast of interest in terms of the **treatment averages**, giving
+\[
+C = \sum_{i=1}^a c_i\bar y_{i.}
+\]
+  
+The variance of *C* is
+\[
+V(C) = V(\sum_{i=1}^a c_i\bar y_{i.}) = \sum_{i=1}^a V(c_i\bar y_{i.}) = \sum_{i=1}^a c_i^2V(\bar y_{i.}) = \frac{1}{n}\sum_{i=1}^a c_i^2V(y_{i.}) = \mathbf{\frac{\sigma^2}{n}\sum_{i=1}^a c_i^2}
+\]
+  
+**when the sample sizes in each treatment are equal**. If the null hypothesis is true, the ratio
+\[
+\frac{C}{sd(C)}=\frac{C}{\sqrt{V(C)}} =\frac{\sum_{i=1}^a c_i\bar y_{i.}}{\sqrt{\frac{\sigma}{n}\sum_{i=1}^a c_i^2}}
+\]
+  
+is distributed *N(0,1)*.
+  
+(1) The first method uses a *t* test. Replacing the unknown variance $\sigma^2$ with the mean square $MS_E$, we get the statistic
+\[
+t_0 = \frac{\sum_{i=1}^2 c_i\bar y_{i.}}{\sqrt{\frac{MS_E}{n}\sum_{i=1}^2 c_i^2}}
+\]
+  
+to test the hypothesis $H_0: \sum_{i=1}^2 c_i\mu_i = 0$. The null hypothesis would be rejected if $|t_0| > t_{\alpha/2,N-a}$.
+  
+(2) The second approach uses an **F-test**. The square of a *t* random variable with $\nu$ degrees of freedom is an *F* random variable with 1 numerator degrees of freedom and $\nu$ denominator degrees of freedom. Therefore we can obtain
+\[
+F_0 = t_0^2 = \frac{(\sum_{i=1}^2c_i\bar y_{i.})^2}{\frac{MS_E}{n}\sum_{i=1}^a c_i^2}
+\]
+  
+as an *F* statistic for testing the hypothesis $H_0: \sum_{i=1}^2 c_i\mu_i = 0$. The null hypothesis would be rejected in $F_0 > F_{\alpha/2,1,N-a}$. We can write the test statistic as
+\[
+F_0 = \frac{MS_C}{MS_E} = \frac{SS_C/1}{MS_E}
+\]
+  
+where the single degree of freedom contrast sum of squares is
+\[
+SS_C = \frac{(\sum_{i=1}^a c_i\bar y_{i.})^2}{\frac{1}{n}\sum_{i=1}^a c_i^2}
+\]
+  
+##### Confidence Interval for a Contrast
+Suppose that the contrast of interest is
+\[
+\Gamma = \sum_{i=1}^a c_i\mu_i
+\]
+  
+We replace the true treatment means with treatment averages, yielding
+\[
+C = \sum_{i=1}^a c_i\bar y_{i.}
+\]
+  
+Taking the expected value and variance of *C*, we have
+\[
+\begin{aligned}
+E(C) &= E(\sum_{i=1}^a c_i\bar y_{i.}) = \sum_{i=1}^a c_iE(\bar y_{i.}) = \sum_{i=1}^a c_i\mu_i\\
+V(C) &= V(\sum_{i=1}^a c_i\bar y_{i.}) = \sum_{i=1}^a c_i^2V(\bar y_{i.}) = \frac{\sigma^2}{n}\sum_{i=1}^a c_i^2
+\end{aligned}
+\]
+  
+so the $100(1-\alpha)$ percent confidence interval on the contrast $\sum_{i=1}^a c_i\mu_i$ is
+\[
+\sum_{i=1}^a c_i\bar y_{i.} - t_{\alpha/2,N-a}\sqrt{\frac{MS_E}{n}\sum_{i=1}^a c_i^2} \le \sum_{i=1}^a c_i\mu_i \le \sum_{i=1}^a c_i\bar y_{i.} +  t_{\alpha/2,N-a}\sqrt{\frac{MS_E}{n}\sum_{i=1}^a c_i^2}
+\]
+  
+##### Standardized Contrast
+We may want to evaluate more than one contrast at a time (like investigating multiple hypotheses at once). We can standarize the contrasts so that they have variance $\sigma^2$ (just divide out the extra stuff). The **standardized contrast** is
+\[
+\sum_{i=1}^a c_i^\star \bar y_{i.}
+\]
+  
+where
+\[
+c_i^{\star} = \frac{c_i}{\sqrt{\frac{1}{n}\sum_{i=1}^a c_i^2}}
+\]
+  
+##### Unequal Sample Sizes
+When the sample sizes are different, minor modifications are made in the above results. While we first assumed that the **contrast constants** summed to 0 ($\sum_{i=1}^a c_i = 0$), we now have to assume that
+\[
+\sum_{i=1}^a n_ic_i = 0
+\]
+  
+Now we can recalculate the *t* statistic as
+\[
+t_0 = \frac{\sum_{i=1}^a c_i\bar y_{i.}}{\sqrt{MS_E\sum_{i=1}^a \frac{c_i^2}{n_i}}}
+\]
+  
+and the contrast sum of squares becomes
+\[
+SS_C = \frac{(\sum_{i=1}c_i\bar y_{i.})^2}{\sum_{i=1}^a \frac{c_i}{n_i}}
+\]
+  
+Essentially, we can no longer pull the *n* outside of the sum across treatments (*i*).
+  
+### 3.5.5 Orthogonal Contrasts
+Two contrasts with coefficients $c_i$ and $d_i$ are orthogonal is
+\[
+\sum_{i=1}^a c_id_i = 0
+\]
+  
+or, for an unbalanced design,
+\[
+\sum_{i=1}^a n_ic_id_i
+\]
+  
+**Orthogonal contrasts are important!** For *a* treatments, the set of $a-1$ orthogonal contrasts partition the sum of squares due to treatments into $a-1$ independent single degree of freedom components. Thus, tests performed on orthogonal contrasts are independent.
+  
+There are many ways to choose the orthogonal contrast coefficients for a set of treatments. For example, consider a study with three levels of treatment: one control, and two treatments that are actually of interest. The appropriate contrasts might be
+  
+```{r, echo = F}
+kable(
+  as.data.frame(array(
+    c(
+      "Control","Treatment 1","Treatment 2",
+      -2,1,1,
+      0,-1,1
+      ),dim = c(3,3)
+    )
+    ),col.names = c("Treatment","Contrast 1","Contrast 2")
+  )
+```
+  
+Note that contrast 1 compares the average effect of Treatment 1 and Treatment 2 (the factor) with the control, whereas contrast 2 compares Treatment 1 and Treatment, the two levels of the factors of interest.
+  
+Let's look back at the EtchRate data. Say we want to make the following comparisons:
+\[
+\begin{aligned}
+H_0:& \mu_1 = \mu_2\\
+H_0:& \mu_1 + \mu_2 = \mu_3 + \mu_4\\
+H_0:& \mu_3 = \mu_4
+\end{aligned}
+\]
+  
+```{r, echo = T}
+# Planned Contrasts
+## Relevel your factors so you can properly set your contrasts
+dat0$Power <- factor(dat0$Power,levels = c("160","180","200","220"))
+
+C1v2   <- c(1,-1, 0, 0)
+C12v34 <- c(1, 1,-1,-1)
+C3v4   <- c(0, 0, 1,-1)
+
+cont.interest <- cbind(C1v2,C12v34,C3v4)
+rownames(cont.interest) <- levels(dat0$Power)
+
+## Merge onto treatment means
+EtchRate_means <- summarize(
+  group_by(dat0,Power)
+  ,yi.bar = mean(EtchRate)
+  ,ni = length(EtchRate)
+  )
+EtchRate_means <- cbind(EtchRate_means,cont.interest)
+EtchRate_melt <- melt(EtchRate_means,id.vars = c("Power","yi.bar","ni"))
+
+MSE <- anova_EtchRate_car$`Sum Sq`/anova_EtchRate_car$Df
+
+EtchRate_contrasts <- summarize(
+  group_by(EtchRate_melt,variable)
+  ,effect = sum(yi.bar * value)
+  ,SS     = effect^2/(sum(value^2/unique(ni)))
+  ,F.value = SS/MSE[3]
+  ,p.value = pf(F.value,1,NROW(dat0)-4,lower.tail = F)
+)
+
+
+```
+  
+### 3.5.6 Scheffe's Method for Comparing All Contrasts
+Scheffe has proposed a method for comparing any al all possible contrasts between treatment means. Type I error is at most $\alpha$ for any of the possible comparisons. Say we have *m* contrasts of interest in the treatment means:
+\[
+\Gamma_{u} = c_{1u}\mu_1 + c_{2u}\mu_2 + ... + c_{au}\mu_a,\ u=1,2,...,m
+\]
+  
+We're really looking to test the hypothesis that $\Gamma_{u} = 0$ against the alternative that $\Gamma \ne 0$, that is, at least one of the contrasts is significantly different from 0. The corresponding contrasts in the treatment averages $\bar y_{i.}$ is
+\[
+C_{u} = c_{1u}\bar y_{1.} + c_{2u}\bar y_{2.} + ... + c_{au}\bar y_{a.},\ u=1,2,...,m
+\]
+  
+and the **standard error** of this contrast is
+\[
+S_{C_u} = \sqrt{MS_E\sum_{i=1}^a(c_{iu}^2/n_i)}
+\]
+  
+$C_u$ should be compared to the critical value
+\[
+S_{\alpha,u} = S_{C_u}\sqrt{(a-1)F_{\alpha,a-1,N-a}}
+\]
+  
+If $|C_u|>S_{\alpha,u}$, then we reject the null hypothesis that $\Gamma_u=0$.
+  
+We can form confidence intervals for all possible contrasts among treatment means, called **simultaneous confidence intervals**: the probability that all contrasts are simultaneously true is at least $1-\alpha$.
+  
+In our example, let's say we want to look at the following contrasts:
+\[
+\begin{aligned}
+\Gamma_1 &= \mu_1 + \mu_2 - \mu_3 - \mu_4\text{, and}\\
+\Gamma_2 &= \mu_1 - \mu_4
+\end{aligned}
+\]
+  
+```{r, echo = T}
+# Create contrast matrix of interest
+C12_34 <- c(1,1,-1,-1)
+C1_4   <- c(1,0,0,-1)
+
+Gamma_u <- cbind(C12_34,C1_4)
+rownames(Gamma_u) <- levels(dat0$Power)
+
+# Add to EtchRate Means
+EtchRate_means <- summarize(
+  group_by(dat0,Power)
+  ,yi.bar = mean(EtchRate)
+  ,ni = length(EtchRate)
+)
+
+EtchRate_means <- cbind(EtchRate_means,Gamma_u)
+EtchRate_melt <- melt(EtchRate_means,id.vars = c("Power","yi.bar","ni"))
+EtchRate_contrasts <- summarize(
+  group_by(EtchRate_melt,variable)
+  ,effect = sum(yi.bar * value)
+  ,Sc     = sqrt(MSE[3]*sum(value^2/ni))
+  ,Scrit  = Sc*sqrt((4-1)*qf(0.99,4-1,NROW(dat0) - 4))
+)
+
+data.frame(EtchRate_contrasts)
+```
+  
+Because $|C_1|=193.8 > 65.10$, we conclude that the contrast $\Gamma_1=\mu_1 + \mu_2 -\mu_3 - \mu_4$ does not equal 0. Furthermore, we also conclude that $\Gamma_2$ does not equal 0.
+  
+### 3.5.7 Comparing Pairs of Treatment Means
+##### Tukey's Test
+Suppose we have rejected the null hypothesis of equal treatment means and we wish to test **all pairwise mean comparisons**.
+\[
+\begin{aligned}
+H_0:& \mu_i = \mu_j\\
+H_1:& \mu_i \ne \mu_j\text{  for all }i \ne j
+\end{aligned}
+\]
+  
+Tukey's test tests all pairwise mean comparisons and holds the **overall significance level** to exactly $\alpha$ when sample sizes are equal (or at most $\alpha$ when sample sizes are unequal). This method uses the **studentized range statistic**
+\[
+q = \frac{\bar y_{max} - \bar y_{min}}{\sqrt{MS_E/n}}
+\]
+  
+where $\bar y_{max}$ and $\bar y_{min}$ are the largest and smallest sample means out of a group of *p* sample means. For equal sample sizes, two means are significantly different when
+\[
+|\bar y_{i.} - \bar y_{j.}| > T_{\alpha} = q_{\alpha}(a,f)\sqrt{\frac{MS_E}{n}}
+\]
+  
+or, when sample sizes are unequal (**Tukey-Kramer procedure**),
+\[
+|\bar y_{i.} - \bar y_{j.}| > T_{\alpha} = \frac{q_{\alpha}(a,f)}{\sqrt{2}}\sqrt{MS_E(\frac{1}{n_1}+\frac{1}{n_j})}
+\]
+  
+Let's apply this to our Etch Rate data.
+  
+```{r, echo = T}
+
+TukeyHSD(aov(mod_EtchRate))
+
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
